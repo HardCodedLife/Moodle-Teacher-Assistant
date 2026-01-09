@@ -15,7 +15,7 @@ services:
       - n8n-postgres-data:/var/lib/postgresql/data
 
   n8n:
-    image: n8nio/n8n:latest
+    image: n8nio/n8n:2.3.2
     container_name: n8n
     restart: always
     ports:
