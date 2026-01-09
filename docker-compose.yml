@@ -1,0 +1,41 @@
+
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: n8n-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: n8nuser
+      POSTGRES_PASSWORD: n8npassword
+      POSTGRES_DB: n8ndb
+    ports:
+      - "5432:5432"
+    volumes:
+      - n8n-postgres-data:/var/lib/postgresql/data
+
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n
+    restart: always
+    ports:
+      - "5678:5678"
+    environment:
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_DATABASE: n8ndb
+      DB_POSTGRESDB_USER: n8nuser
+      DB_POSTGRESDB_PASSWORD: n8npassword
+      N8N_BASIC_AUTH_ACTIVE: 'true'
+      N8N_BASIC_AUTH_USER: 'admin'
+      N8N_BASIC_AUTH_PASSWORD: 'adminpassword'
+      N8N_HOST: localhost
+      N8N_PORT: 5678
+      N8N_PROTOCOL: http
+      NODE_FUNCTION_ALLOW_EXTERNAL: "*"
+    depends_on:
+      - postgres
+
+volumes:
+  n8n-postgres-data:

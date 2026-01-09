@@ -1,0 +1,188 @@
+{
+  "name": "get Moodle class assignments",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "Cookie"
+            },
+            {
+              "name": "courseID"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "64840fde-e7db-4196-9cfc-23fd01136b59",
+      "name": "get assignments"
+    },
+    {
+      "parameters": {
+        "url": "=https://moodle.nhu.edu.tw/course/view.php?id={{ $json.courseID }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Cookie",
+              "value": "={{ $json.Cookie }}"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": true,
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        208,
+        0
+      ],
+      "id": "f0b73106-9d96-4357-84ba-2cddbf9a7b45",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "const results = [];\n\n// Helper to clean up text (remove nested tags like <b> or <span>)\nfunction stripTags(str) {\n  if (!str) return '';\n  return str.replace(/<[^>]*>?/gm, '').trim();\n}\n\nfor (const item of $input.all()) {\n  // 1. Get the full HTML content from your specific field 'data'\n  const fullHtml = item.json.data || \"\";\n\n  // 2. Global Regex to find ALL anchor tags\n  // g = global (find all), i = case insensitive\n  // Group 1: The URL\n  // Group 2: The Text (non-greedy)\n  const regex = /<a[^>]+href=[\"']([^\"']+)[\"'][^>]*>([\\s\\S]*?)<\\/a>/gi;\n\n  // 3. Iterate over every match in the huge string\n  let match;\n  while ((match = regex.exec(fullHtml)) !== null) {\n    \n    // Create a new item for each link found\n    results.push({\n      json: {\n        linkUrl: match[1],         // The URL\n        linkText: stripTags(match[2]) // The Clean Text\n      }\n    });\n  }\n}\n\n// 4. Return the new list of items (one per link)\nreturn results;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "edd09f0a-222d-425b-953b-acb16dca7fab",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "adc1efed-7206-4f87-ad54-d03f1f15b59d",
+              "leftValue": "={{ $json.linkUrl }}",
+              "rightValue": "/assign/view.php?id=",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        624,
+        0
+      ],
+      "id": "90d270e1-5600-4663-81d4-bc6a1189ef4b",
+      "name": "Filter"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Map over the input items and return a clean object with new names\nreturn $input.all().map(item => {\n  return {\n    json: {\n      assignUrl: item.json.linkUrl,\n      assignNameame: item.json.linkText\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        832,
+        0
+      ],
+      "id": "5dd41424-8e72-48a2-baa1-5e9ce3d1d000",
+      "name": "Code in JavaScript1"
+    }
+  ],
+  "pinData": {
+    "get assignments": [
+      {
+        "json": {
+          "Cookie": "MoodleSession=kr7qqlkbh5av97mm8pt9i15ndk; MOODLEID1_=%25A6%2594%25E0%25E2%2501%2596%25CC%2594",
+          "courseID": "6846"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "get assignments": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "9e55b939-65ea-4465-9c94-ee73192937b7",
+  "meta": {
+    "instanceId": "0200bb8e44558c89e3331eb11833a43f1db06e9bfdebe807fccb7c4ab070316a"
+  },
+  "id": "TjwUck9DVEINvXXmtp5XM",
+  "tags": []
+}

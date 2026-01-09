@@ -1,0 +1,150 @@
+{
+  "name": "get all students' scores of assignment",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "assignmentID"
+            },
+            {
+              "name": "Cookie"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "e5f14bba-e397-4327-b0bc-b3759a3b8f93",
+      "name": "get scores"
+    },
+    {
+      "parameters": {
+        "url": "=https://moodle.nhu.edu.tw/mod/assign/view.php?id={{ $json.assignmentID }}&action=grading",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Cookie",
+              "value": "={{ $json.Cookie }}"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": true,
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        208,
+        0
+      ],
+      "id": "04d16837-4d41-4138-9c26-7471ae2ab187",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Get the HTML string\nconst html = $input.first().json.data;\n\n// --- EXTRACT TITLE ---\nconst titleMatch = html.match(/<[^>]*class=[\"'][^\"']*h2[^\"']*[\"'][^>]*>([\\s\\S]*?)<\\//i);\n\nlet title = \"Unknown Assignment\";\nif (titleMatch) {\n  title = titleMatch[1].replace(/<[^>]+>/g, '').trim();\n}\n\n// --- EXTRACT STUDENTS ---\nconst students = [];\nconst rows = html.split('<tr');\n\nfor (const row of rows) {\n  // Filter for valid student rows\n  if (!row.includes('c2') || !row.includes('quickgrade')) continue;\n\n  try {\n    // 1. Extract Name & ID\n    const nameMatch = row.match(/class=[\"'][^\"']*c2[^\"']*[\"'][^>]*>([\\s\\S]*?)<\\/t[dh]>/i);\n    let rawNameText = '';\n    \n    if (nameMatch) {\n        // Strip tags, replace non-breaking spaces (&nbsp;) with normal space, and trim\n        rawNameText = nameMatch[1]\n            .replace(/<[^>]+>/g, ' ')\n            .replace(/&nbsp;/g, ' ')\n            .trim();\n    }\n    \n    // Split by one or more whitespace characters\n    const nameParts = rawNameText.split(/\\s+/);\n    \n    // Ensure we have at least two parts (Name + ID)\n    if (nameParts.length < 2) continue;\n\n    // --- IMPROVEMENT HERE ---\n    // .pop() removes the last element and returns it (The ID)\n    const id = nameParts.pop(); \n    \n    // .join(' ') combines the remaining elements back into a string (The Name)\n    const name = nameParts.join(' '); \n    // ----------------------\n\n    // 2. Extract Score\n    const inputTagMatch = row.match(/<input[^>]*class=[\"'][^\"']*quickgrade[^\"']*[\"'][^>]*>/i);\n    let score = 0;\n\n    if (inputTagMatch) {\n      const valMatch = inputTagMatch[0].match(/value=[\"']([^\"']+)[\"']/i);\n      // Ensure we parse it correctly, handling potential empty strings\n      if (valMatch && valMatch[1].trim() !== '') {\n          score = parseFloat(valMatch[1]);\n      }\n    }\n\n    // Add to students array\n    students.push({\n      id: id,\n      name: name,\n      score: score\n    });\n\n  } catch (e) { continue; }\n}\n\n// --- RETURN FINAL STRUCTURE ---\nreturn [{\n  json: {\n    title: title,\n    data: students\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        464,
+        0
+      ],
+      "id": "b4fe7ab3-8e43-4511-b5ab-08974f5d5d55",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7129fa8f-499f-4f71-b795-2a82329818af",
+              "name": "title",
+              "value": "={{ $json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "088b94f5-602c-4322-a692-bb340de5149e",
+              "name": "data",
+              "value": "={{ $json.data }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        784,
+        176
+      ],
+      "id": "1c28e184-a16a-43ba-95e9-2e34652e163b",
+      "name": "Edit Fields"
+    }
+  ],
+  "pinData": {
+    "get scores": [
+      {
+        "json": {
+          "assignmentID": "13041",
+          "Cookie": "MoodleSession=kr7qqlkbh5av97mm8pt9i15ndk; MOODLEID1_=%25A6%2594%25E0%25E2%2501%2596%25CC%2594"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "get scores": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "5901efd2-6300-4eaf-b3cb-2043cd623ab0",
+  "meta": {
+    "instanceId": "1df476e439ae6d764c3f5a1f2da1a5f68c2121672dded04090182e09aff8e9ed"
+  },
+  "id": "SmjWR6dT2vWzjU1Ixa1GM",
+  "tags": []
+}

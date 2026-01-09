@@ -1,0 +1,436 @@
+{
+  "name": "Teacher",
+  "nodes": [
+    {
+      "parameters": {
+        "availableInChat": true,
+        "agentName": "Teacher",
+        "options": {
+          "responseMode": "streaming"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -752,
+        -128
+      ],
+      "id": "41a990eb-166f-49f2-8ba3-86b246869571",
+      "name": "When chat message received",
+      "webhookId": "db0a795b-01b9-47c8-8917-0ba10201a499"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "You are a assistant of a Teacher in University to help with tasks that a user ask to to."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -144,
+        -128
+      ],
+      "id": "013e63cb-5d18-45f7-9e02-1271826369f0",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3-flash-preview",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -576,
+        -16
+      ],
+      "id": "36950b14-fdf3-4793-8989-25af68f69679",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "uOaXUqnwRhQ9NrIT",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "description": "Logs the user into Moodle. This tool requires two separate parameters: 'username' and 'password'. Do not combine them into a single string. And you will get cookie as an output parameter for other operations on Moodle if login is successful.",
+        "workflowId": {
+          "__rl": true,
+          "value": "ONUiQDzyMTcmo8pK",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/ONUiQDzyMTcmo8pK",
+          "cachedResultName": "LoginMoodle"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "username": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('username', `The user's username`, 'string') }}",
+            "password": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('password', `The user's password`, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "username",
+              "displayName": "username",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "password",
+              "displayName": "password",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        112,
+        176
+      ],
+      "id": "f92ca9d6-dd7b-425e-9e5b-b25aea407838",
+      "name": "Call 'LoginMoodle'"
+    },
+    {
+      "parameters": {
+        "contextWindowLength": 100
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [
+        -432,
+        16
+      ],
+      "id": "6c5686ce-4641-41bd-8895-9fab20ab178a",
+      "name": "Postgres Chat Memory",
+      "credentials": {
+        "postgres": {
+          "id": "LlRLxX5r1RQasBaj",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "description": "Call this tool to see all the classes under a user with class names and corresponding links with cookie you get from login Moodle.",
+        "workflowId": {
+          "__rl": true,
+          "value": "-pRZCh2Xxmq2OOZup2qhL",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/-pRZCh2Xxmq2OOZup2qhL",
+          "cachedResultName": "Show Moodle classes"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "cookie": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('cookie', `Input cookie you got from login to Moodle. If you have no cookie, login Moodle first.`, 'string') }}"
+          },
+          "matchingColumns": [
+            "cookie"
+          ],
+          "schema": [
+            {
+              "id": "cookie",
+              "displayName": "cookie",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        256,
+        176
+      ],
+      "id": "fa819d96-a8a3-400e-b897-46c0ebc2df69",
+      "name": "Call 'Show Moodle classes'"
+    },
+    {
+      "parameters": {
+        "description": "Call this tool with cookie and class ID to get all the assignments of this class.",
+        "workflowId": {
+          "__rl": true,
+          "value": "TjwUck9DVEINvXXmtp5XM",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/TjwUck9DVEINvXXmtp5XM",
+          "cachedResultName": "get Moodle class assignments"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "courseID": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('courseID', `class ID is at the end of the class's URL`, 'string') }}",
+            "Cookie": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Cookie', `cookie you get from login Moodle`, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Cookie",
+              "displayName": "Cookie",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "courseID",
+              "displayName": "courseID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        384,
+        176
+      ],
+      "id": "57da6746-0b72-46d3-8167-a8f323673386",
+      "name": "Call 'get Moodle class assignments'"
+    },
+    {
+      "parameters": {
+        "description": "Call this tool to know all the scores of all students on a single assignments.",
+        "workflowId": {
+          "__rl": true,
+          "value": "SmjWR6dT2vWzjU1Ixa1GM",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/SmjWR6dT2vWzjU1Ixa1GM",
+          "cachedResultName": "get all students' scores of assignment"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "assignmentID": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('assignmentID', `ID of the assignment you want to know`, 'string') }}",
+            "Cookie": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Cookie', `cookie you get from login moodle`, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "assignmentID",
+              "displayName": "assignmentID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "Cookie",
+              "displayName": "Cookie",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        528,
+        176
+      ],
+      "id": "32069e86-fbf1-45bf-a0a7-c4914fb34b0c",
+      "name": "Call 'get all students' scores of assignment'"
+    },
+    {
+      "parameters": {
+        "description": "Call this tool to get a list of [{title:,data:[{id:,name:,score:}...]}...]",
+        "workflowId": {
+          "__rl": true,
+          "value": "RuLJhdi95YX3TqaZYgWL6",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/RuLJhdi95YX3TqaZYgWL6",
+          "cachedResultName": "get class score table"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Cookie": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Cookie', `cookie you get from Login Moodle.`, 'string') }}",
+            "courseID": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('courseID', `class ID is at the end of the class's URL`, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Cookie",
+              "displayName": "Cookie",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "courseID",
+              "displayName": "courseID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        672,
+        176
+      ],
+      "id": "56cabc51-ff17-4c8a-959b-a36a70a99e77",
+      "name": "Call 'get class score table'"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        []
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'LoginMoodle'": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Show Moodle classes'": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'get Moodle class assignments'": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'get all students' scores of assignment'": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'get class score table'": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "cd4ac381-7efb-49b2-8c95-725201c647c4",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0200bb8e44558c89e3331eb11833a43f1db06e9bfdebe807fccb7c4ab070316a"
+  },
+  "id": "tSxYrZ-dLM40DHH_1I1Ya",
+  "tags": []
+}
