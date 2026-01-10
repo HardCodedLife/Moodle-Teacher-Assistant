@@ -17,6 +17,7 @@ if not os.path.exists(SAFE_FILE_DIR):
 class CrawlRequest(BaseModel):
     url: str
     selector: Optional[str] = None # CSS selector to extract specific content
+    cookie: str
 
 class TextProcessRequest(BaseModel):
     text: str
@@ -44,7 +45,8 @@ def crawl_website(request: CrawlRequest):
     Optionally accepts a CSS selector to filter the result.
     """
     try:
-        response = requests.get(request.url, timeout=10)
+        headers = {'cookie':request.cookie}
+        response = requests.get(request.url, verify=False, headers=headers)
         response.raise_for_status()
         
         soup = BeautifulSoup(response.text, 'html.parser')
@@ -137,10 +139,10 @@ def moodle_login(request: LoginRequest):
         
         # Note: Moodle's actual login URL is usually /login/index.php
         response = session.post(request.url, data=payload, verify=False)
-        
+        cookie = "; ".join([f"{x.name}={x.value}" for x in session.cookies])
         return {
             "status": response.status_code,
-            "cookies": session.cookies.get_dict(),
+            "cookie": cookie,
             "url_after_login": response.url
         }
     except Exception as e:
