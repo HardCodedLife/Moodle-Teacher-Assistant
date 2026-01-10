@@ -4,6 +4,8 @@ from typing import Optional, List
 import requests
 from bs4 import BeautifulSoup
 import os
+import json
+import re
 
 app = FastAPI(title="n8n Python Tools", version="1.0.0")
 
@@ -32,6 +34,9 @@ class LoginRequest(BaseModel):
     username: str
     password: str
 
+class AssignmentsRequest(BaseModel):
+    course: str
+    cookie: str
 # --- Endpoints ---
 
 @app.get("/")
@@ -147,3 +152,54 @@ def moodle_login(request: LoginRequest):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/tools/get-assinments-of-class")
+def moodle_login(request: AssignmentsRequest):
+    try:
+        headers = {'cookie':request.cookie}
+        courses_response = requests.get('https://moodle.nhu.edu.tw/my/courses.php', verify=False, headers=headers)
+        soup = BeautifulSoup(courses_response.text, 'html.parser')
+        selector = f'a[href*="/course/view.php?id="]:-soup-contains("{request.course}")'
+        matches = soup.select(selector)
+        course = matches[0]
+        course_url = course['href']
+        
+        course_response = requests.get('https://moodle.nhu.edu.tw' + course_url, verify=False, headers=headers)
+        soup = BeautifulSoup(course_response.text, 'html.parser')
+        selector = 'a[href*="/assign/view.php?id="]'
+        selector = 'a.aalink'
+        assignments = soup.select(selector)
+        
+        results = []
+        for assignment in assignments:
+            # 1. Extract the ID from the href (e.g., id=13041)
+            href = assignment.get('href')
+            id_match = re.search(r'id=(\d+)', href)
+            if id_match:
+                course_id = id_match.group(1)
+                
+                # 2. Extract the Name
+                # We find the 'instancename' span
+                name_span = assignment.find('span', class_='instancename')
+                
+                if name_span:
+                    
+                    # Get the clean text
+                    course_name = name_span.get_text(strip=True)
+                    
+                    # 3. Add to list
+                    results.append({
+                        "id": course_id,
+                        "name": course_name
+                    })
+        # 4. Convert to JSON format
+        json_output = json.dumps(results, indent=4, ensure_ascii=False)
+        
+        return {
+            "status": course_response.status_code,
+            "title": soup.title.string if soup.title else ""
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))        
+    
