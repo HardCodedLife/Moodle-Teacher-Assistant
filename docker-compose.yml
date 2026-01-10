@@ -13,6 +13,8 @@ services:
       - "5432:5432"
     volumes:
       - n8n-postgres-data:/var/lib/postgresql/data
+    networks:
+      - n8n-net
 
   python-tools:
     build: 
