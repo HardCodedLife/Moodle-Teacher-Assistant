@@ -197,7 +197,7 @@ def moodle_login(request: AssignmentsRequest):
         
         return {
             "status": course_response.status_code,
-            "title": soup.title.string if soup.title else ""
+            "title": soup.title.string if soup.title else "",
             "assignments": json_output
         }
         
