@@ -167,7 +167,6 @@ def moodle_login(request: AssignmentsRequest):
         course_response = requests.get('https://moodle.nhu.edu.tw' + course_url, verify=False, headers=headers)
         soup = BeautifulSoup(course_response.text, 'html.parser')
         selector = 'a[href*="/assign/view.php?id="]'
-        selector = 'a.aalink'
         assignments = soup.select(selector)
         
         results = []
@@ -193,7 +192,7 @@ def moodle_login(request: AssignmentsRequest):
                         "name": course_name
                     })
         # 4. Convert to JSON format
-        json_output = json.dumps(results, indent=4, ensure_ascii=False)
+        json_output = json.dumps(results, ensure_ascii=False)
         
         return {
             "status": course_response.status_code,
