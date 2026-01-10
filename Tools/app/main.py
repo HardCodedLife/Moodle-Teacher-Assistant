@@ -1,0 +1,147 @@
+from fastapi import FastAPI, HTTPException, Body
+from pydantic import BaseModel
+from typing import Optional, List
+import requests
+from bs4 import BeautifulSoup
+import os
+
+app = FastAPI(title="n8n Python Tools", version="1.0.0")
+
+# --- Configuration ---
+# Restrict file operations to this directory for safety
+SAFE_FILE_DIR = os.path.join(os.getcwd(), "file_storage")
+if not os.path.exists(SAFE_FILE_DIR):
+    os.makedirs(SAFE_FILE_DIR)
+
+# --- Models ---
+class CrawlRequest(BaseModel):
+    url: str
+    selector: Optional[str] = None # CSS selector to extract specific content
+
+class TextProcessRequest(BaseModel):
+    text: str
+    operation: str # 'uppercase', 'lowercase', 'word_count'
+
+class FileWriteRequest(BaseModel):
+    filename: str
+    content: str
+
+class LoginRequest(BaseModel):
+    url: str
+    username: str
+    password: str
+
+# --- Endpoints ---
+
+@app.get("/")
+def read_root():
+    return {"status": "online", "docs_url": "http://localhost:8000/docs"}
+
+@app.post("/tools/crawl")
+def crawl_website(request: CrawlRequest):
+    """
+    Fetches a URL and returns the text content. 
+    Optionally accepts a CSS selector to filter the result.
+    """
+    try:
+        response = requests.get(request.url, timeout=10)
+        response.raise_for_status()
+        
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        if request.selector:
+            # Extract specific elements
+            elements = soup.select(request.selector)
+            content = "\n".join([el.get_text(strip=True) for el in elements])
+        else:
+            # Extract all text
+            content = soup.get_text(strip=True)
+            
+        return {
+            "url": request.url,
+            "status_code": response.status_code,
+            "content": content[:5000], # Limit response size for n8n
+            "title": soup.title.string if soup.title else ""
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/tools/text-process")
+def process_text(request: TextProcessRequest):
+    """
+    Performs simple operations on text.
+    Operations: 'uppercase', 'lowercase', 'word_count', 'reverse'
+    """
+    op = request.operation.lower()
+    result = ""
+    
+    if op == "uppercase":
+        result = request.text.upper()
+    elif op == "lowercase":
+        result = request.text.lower()
+    elif op == "word_count":
+        result = str(len(request.text.split()))
+    elif op == "reverse":
+        result = request.text[::-1]
+    else:
+        return {"error": f"Unknown operation: {op}"}
+        
+    return {"original": request.text, "operation": op, "result": result}
+
+@app.post("/tools/file/write")
+def write_file(request: FileWriteRequest):
+    """
+    Writes content to a file in the safe storage directory.
+    """
+    # Security: Prevent directory traversal
+    if ".." in request.filename or "/" in request.filename or "\\" in request.filename:
+         raise HTTPException(status_code=400, detail="Invalid filename. Use simple filenames only.")
+         
+    file_path = os.path.join(SAFE_FILE_DIR, request.filename)
+    
+    with open(file_path, "w", encoding="utf-8") as f:
+        f.write(request.content)
+        
+    return {"status": "success", "file_path": file_path, "size": len(request.content)}
+
+@app.get("/tools/file/list")
+def list_files():
+    """
+    Lists files in the storage directory.
+    """
+    files = os.listdir(SAFE_FILE_DIR)
+    return {"files": files, "count": len(files)}
+
+@app.post("/tools/moodle-login-helper")
+def moodle_login(request: LoginRequest):
+    """
+    Simulates a login request to capture a session token or cookie.
+    Useful for Moodle or other form-based auth sites.
+    """
+    try:
+        session = requests.Session()
+        # This is a generic example. Moodle specifically often requires extracting a 'logintoken' first.
+        # Step 1: Get the login page to find tokens (if needed)
+        login_page = session.get(request.url, verify=False)
+        
+        # Step 2: Post credentials
+        soup = BeautifulSoup(login_page.text, 'html.parser')
+        logintoken = soup.find('form').find('input',attrs={"name":"logintoken"}).get('value')
+
+        payload = {
+            "username": request.username,
+            "password": request.password,
+            "logintoken": logintoken,
+            "anchor": '',
+        }
+        
+        # Note: Moodle's actual login URL is usually /login/index.php
+        response = session.post(request.url, data=payload, verify=False)
+        
+        return {
+            "status": response.status_code,
+            "cookies": session.cookies.get_dict(),
+            "url_after_login": response.url
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
