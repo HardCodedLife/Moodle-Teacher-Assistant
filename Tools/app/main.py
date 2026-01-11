@@ -211,9 +211,13 @@ def get_assignments(request: AssignmentsRequest):
 def get_assignment_info(request: AssignmentRequest):
     try:
         headers = {'cookie':request.cookie}
+        selector = '#intro .no-overflow'
+        description_response = requests.get(f'https://moodle.nhu.edu.tw/mod/assign/view.php?id={request.assignment_id}', verify=False, headers=headers)
+        soup = BeautifulSoup(description_response.text, 'html.parser')
+        requirements = soup.select(selector)[0]
+        requirements = requirements.get_text(separator="\n", strip=True)
         assignment_response = requests.get(f'https://moodle.nhu.edu.tw/mod/assign/view.php?id={request.assignment_id}&action=grading', verify=False, headers=headers)
         soup = BeautifulSoup(assignment_response.text, 'html.parser')
-        selector = '#intro .no-overflow'
         selector = 'tr[id*="mod_assign_grading"]'
         rows = soup.select(selector)
         results = []
@@ -236,6 +240,7 @@ def get_assignment_info(request: AssignmentRequest):
         return {
             "status": assignment_response.status_code,
             "title": soup.title.string if soup.title else "",
+            "requirements":requirements,
             "assignments": json_output
         }
         
