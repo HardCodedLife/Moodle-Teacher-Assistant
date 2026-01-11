@@ -37,6 +37,10 @@ class LoginRequest(BaseModel):
 class AssignmentsRequest(BaseModel):
     course: str
     cookie: str
+    
+class AssignmentRequest(BaseModel):
+    assignment_id: str
+    cookie: str
 # --- Endpoints ---
 
 @app.get("/")
@@ -154,7 +158,7 @@ def moodle_login(request: LoginRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/tools/get-assinments-of-class")
-def moodle_login(request: AssignmentsRequest):
+def get_assignments(request: AssignmentsRequest):
     try:
         headers = {'cookie':request.cookie}
         courses_response = requests.get('https://moodle.nhu.edu.tw/my/courses.php', verify=False, headers=headers)
@@ -202,4 +206,39 @@ def moodle_login(request: AssignmentsRequest):
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))        
-    
+
+@app.post("/tools/get-assinment-info")
+def get_assignment_info(request: AssignmentRequest):
+    try:
+        headers = {'cookie':request.cookie}
+        assignment_response = requests.get(f'https://moodle.nhu.edu.tw/mod/assign/view.php?id={request.assignment_id}&action=grading', verify=False, headers=headers)
+        soup = BeautifulSoup(assignment_response.text, 'html.parser')
+        selector = '#intro .no-overflow'
+        selector = 'tr[id*="mod_assign_grading"]'
+        rows = soup.select(selector)
+        results = []
+        for user_row in rows:
+            user = user_row.select('a[href*="/user/"][id*="action"]')[0].text.split(' ')
+            graded = True if not user_row.select('div[class="submissionstatussubmitted"]') else False
+            score = user_row.select('input[class*="quickgrade"]')[0].get('value')
+            score = score if not score else '0'
+            files = [{"filename":file.get_text(),"url":file['href']} for file in user_row.select('a[target="_blank"]')]
+            
+            results.append({
+                "id": user.pop(),
+                "name": ' '.join(user),
+                "score": score,
+                "files": files,
+            })
+        # 4. Convert to JSON format
+        json_output = json.dumps(results, ensure_ascii=False)
+        
+        return {
+            "status": assignment_response.status_code,
+            "title": soup.title.string if soup.title else "",
+            "assignments": json_output
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))        
+        
