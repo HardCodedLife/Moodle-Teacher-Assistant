@@ -24,3 +24,6 @@ Thumbs.db
 #Docker
 n8n_data/
 file_storage/
+
+#Secret
+.env

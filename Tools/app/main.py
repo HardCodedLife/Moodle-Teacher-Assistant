@@ -6,6 +6,12 @@ from bs4 import BeautifulSoup
 import os
 import json
 import re
+from google import genai
+from google.genai import types
+from dotenv import load_dotenv
+from types import SimpleNamespace
+load_dotenv()
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 
 app = FastAPI(title="n8n Python Tools", version="1.0.0")
 
@@ -41,6 +47,10 @@ class AssignmentsRequest(BaseModel):
 class AssignmentRequest(BaseModel):
     assignment_id: str
     cookie: str
+
+class gemini_response_schema(BaseModel):
+	score: int
+	reason: str
 # --- Endpoints ---
 
 @app.get("/")
@@ -246,4 +256,63 @@ def get_assignment_info(request: AssignmentRequest):
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))        
+
+@app.post("/tools/score-assignment")
+def score_assignment(request: AssignmentRequest):
+    try:
+        headers = {'cookie':request.cookie}
+        selector = '#intro .no-overflow'
+        description_response = requests.get(f'https://moodle.nhu.edu.tw/mod/assign/view.php?id={request.assignment_id}', verify=False, headers=headers)
+        soup = BeautifulSoup(description_response.text, 'html.parser')
+        requirements = soup.select(selector)[0]
+        requirements = requirements.get_text(separator="\n", strip=True)
+        assignment_response = requests.get(f'https://moodle.nhu.edu.tw/mod/assign/view.php?id={request.assignment_id}&action=grading', verify=False, headers=headers)
+        soup = BeautifulSoup(assignment_response.text, 'html.parser')
+        selector = 'tr[id*="mod_assign_grading"]'
+        rows = soup.select(selector)
+        results = []
+        for user_row in rows:
+
+            user = user_row.select('a[href*="/user/"][id*="action"]')[0].text.split(' ')
+            graded = True if not user_row.select('div[class="submissionstatussubmitted"]') else False
+            score = user_row.select('input[class*="quickgrade"]')[0].get('value')
+            score = score if not score else '0'
+            files = [{"filename":file.get_text(),"url":file['href']} for file in user_row.select('a[target="_blank"]')]
+            answer = requests.get(files[0]['url'], headers=headers,verify=False) if len(files) and 'cpp' in files[0]['url'] else ''
+            
+            if answer:
+                contents = {
+                    "title": soup.title.string if soup.title else "",
+                    "requirements":requirements,
+                    "answer": answer.text
+                }
+                contents = json.dumps(contents, ensure_ascii=False)
+                client = genai.Client(api_key=GEMINI_API_KEY)
+                response = client.models.generate_content(
+                    model="gemini-2.5-flash-lite",
+                    contents= contents,
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        response_schema=gemini_response_schema,
+                        system_instruction="You are an assistant helping teacher score assignment according to requirements. Score is 0-100. Keep reason simple.",
+                    )
+                )
+            else:
+                response = SimpleNamespace(
+                    parsed=SimpleNamespace(
+                        score=0,
+                        reason="No answer submitted or Wrong file format"
+                    )
+                )
+            response.parsed
+            results.append({
+                "id": user.pop(),
+                "name": ' '.join(user),
+                "score": response.parsed.score,
+                "reason": response.parsed.reason,
+            })
+
+        return results
         
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))        
