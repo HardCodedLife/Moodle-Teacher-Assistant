@@ -52,6 +52,7 @@ services:
       N8N_SECURE_COOKIE: 'false' # true will force TLS/HTTPS or localhost
       N8N_DEFAULT_CORS: 'true'
       N8N_CORS_ALLOWED_ORIGINS: https://moodle.nhu.edu.tw
+      WEBHOOK_URL: https://n8n.claudeshannon.site/
     networks:
       - n8n-net
     depends_on:
